@@ -2,13 +2,15 @@
 
 library(shiny)
 library(shinydashboard)
+library(DT)
 library(h2o)
+
 #start up 1-node H2O server on local machines(all CPU cores and 2GB memory)
 h2o.init(nthreads=-1, max_mem_size="2G")
 
 # H2OFrame -----
 df <- h2o.importFile(path = normalizePath("D:/R_WD/H2O-Machine Learning-Shiny/NHL_2016_17.csv"))
-
+df_dataframe = as.data.frame(df)
 # training, test datasets -----
 
 splits <- h2o.splitFrame(df, 0.75, seed=666)
@@ -21,21 +23,50 @@ predictor_vars <- names(train)[7:140]
 
 
 ui <- dashboardPage(
-  dashboardHeader(),
-  dashboardSidebar(collapsed = TRUE,
-                    sidebarMenu()),
+       dashboardHeader(title="Machine learning in H2O - Predicting positions", titleWidth = 450),
+        dashboardSidebar(
+         sidebarMenu(
+          menuItem("The Data", tabName = "nhl_data", icon = icon("hockey-puck")),
+          menuItem("Prediction", tabName = "prediction", icon = icon("user-friends"))
+          )),
   dashboardBody(
-    actionButton("start_ml", "Start prediction"),
-    tableOutput("confusion_matrix1"),
-    tableOutput("confusion_matrix2"),
-    tableOutput("confusion_matrix3"),
-    tableOutput("confusion_matrix4")
+    tabItems(
+      # 1. tab content
+      tabItem("nhl_data",
+          fluidRow(
+            box(title = "NHL season 2016/17 Data", width = 12, solidHeader = TRUE, status = "primary",
+              dataTableOutput("NHL_data")
+          )
+      )),
+      tabItem("prediction",
+          fluidRow(
+          actionButton("start_ml", "Start prediction"),
+      box(title = "Neural net", width = 12, solidHeader = TRUE, status = "primary",
+        tableOutput("confusion_matrix1")
+        ),
+      box(title = "Random forest", width = 12, solidHeader = TRUE, status = "primary",
+        tableOutput("confusion_matrix2")
+        ),
+      box(title = "Gradient boosted machines", width = 12, solidHeader = TRUE, status = "primary",
+        tableOutput("confusion_matrix3")
+        ),
+      box(title = "Generalized linear model", width = 12, solidHeader = TRUE, status = "primary",
+        tableOutput("confusion_matrix4")
+       )
   )
+  )
+  )
+)
 )
 
 server <- function(input, output) { 
   
-  
+  output$NHL_data <- renderDataTable({
+    datatable(df_dataframe, 
+    options = list(
+      scrollX = TRUE)
+    )
+    })
   
   
   results_lists <- eventReactive(input$start_ml, {
